@@ -380,6 +380,21 @@ ModUtil.Path.Wrap("UseShrineObject", function (baseFunc, ...)
     if CollatedHades.Initialized == true or not CollatedHades.config.Enabled then
         return baseFunc(...)
     end
+
+    local selectionBehaviorDropdownItems = {
+        Default = {
+            Text = "Run Selection Behavior",
+            event = function() end
+        }
+    }
+    for name, behavior in pairs(CollatedHades.SelectionBehaviors) do
+        table.insert(selectionBehaviorDropdownItems, {
+            Text = name,
+            event = function ()
+                CollatedHades.config.SelectionBehavior = name
+            end
+        })
+    end
     CollatedHades.CreateMenu("CollatedHades", {
         Components = {
             {
@@ -489,14 +504,7 @@ ModUtil.Path.Wrap("UseShrineObject", function (baseFunc, ...)
                     Scale = {X = .30, Y = .35},
                     Padding = {X = 0, Y = 2},
                     GeneralFontSize = 12,
-                    Items = {
-                        Default = {
-                            Text = "Run Selection Behavior",
-                            event = function() end
-                        },
-                        { Text = "Linear", event = function () CollatedHades.config.SelectionBehavior = "Linear" end },
-                        { Text = "Random", event = function () CollatedHades.config.SelectionBehavior = "Random" end },
-                    }
+                    Items = selectionBehaviorDropdownItems,
                 }
             }
         }

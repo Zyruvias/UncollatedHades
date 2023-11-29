@@ -1,17 +1,6 @@
--- ModUtil.Path.Context.Wrap("LeaveRoom")
--- ModUtil.Path.Wrap("LoadMap")
-CollatedHades.Status = {
-    PROCESSING = "PROCESSING",
-    IDLE = "IDLE",
-}
-CollatedHades.RunState = {
-
-}
-CollatedHades.Initialized = false
 function CollatedHades.InitilizeCollatedRun()
     CollatedHades.CurrentRunIndex = 1
 	CollatedHades.RunState[CollatedHades.CurrentRunIndex] = {}
-	DebugPrint { Text = "Initializing Collated Run of size " .. CollatedHades.config.NumRuns}
 	
 	-- set run state for each run expected to run
 	for i = 1, CollatedHades.config.NumRuns, 1 do
@@ -21,6 +10,7 @@ function CollatedHades.InitilizeCollatedRun()
 	end
 	
 	CollatedHades.Initialized = true
+	CollatedHades.RunCallbacks(CollatedHades.Constants.Callbacks.SETUP)
 end
 
 function CollatedHades.SaveRun()
@@ -28,6 +18,9 @@ function CollatedHades.SaveRun()
 		return
 	end
 	local run = CollatedHades.GetCurrentRunState()
+	
+	CollatedHades.RunCallbacks(CollatedHades.Constants.Callbacks.PRE_SAVE, run)
+
     run.CurrentRun = DeepCopyTable(CurrentRun)
 	run.MetaUpgrades = DeepCopyTable(GameState.MetaUpgrades)
 	run.MetaUpgradeState = DeepCopyTable(GameState.MetaUpgradeState)
@@ -37,40 +30,59 @@ function CollatedHades.SaveRun()
 	-- TODO: fix this hack, saving a run can't possibly mean it isn't initialized but this
 	-- shouldn't happen here. or maybe it should? maybe it's not a hack? idk man
 	run.Initialized = true
+
+	
+	CollatedHades.RunCallbacks(CollatedHades.Constants.Callbacks.POST_SAVE)
 end
 
 function CollatedHades.LoadRun()
 	if not CollatedHades.Initialized then
 		return
 	end
-	-- TODO: what else is set in GameState?
 	local run = CollatedHades.GetCurrentRunState()
+	
+	CollatedHades.RunCallbacks(CollatedHades.Constants.Callbacks.PRE_LOAD, run)
+	
+	-- TODO: what else is set in GameState?
 	CurrentRun = run.CurrentRun
 	GameState.MetaUpgrades = run.MetaUpgrades
 	GameState.MetaUpgradeState = run.MetaUpgradeState
 	GameState.MetaUpgradesSelected = run.MetaUpgradesSelected
 	GameState.LastAwardTrait = run.LastAwardTrait
 	GameState.LastAssistTrait = run.LastAssistTrait
+
+	CollatedHades.RunCallbacks(CollatedHades.Constants.Callbacks.POST_LOAD, run)
 	
+end
+
+function CollatedHades.ValidateRun(run)
+	for _, validator in ipairs(CollatedHades.Validators) do
+		if type(validator) == "function" then
+			if not validator(run) then
+				return false
+			end
+		else
+			DebugPrint { Text = "CollatedHades: found improperly formatted validator: " .. ModUtil.ToString.Shallow(validator) }
+		end
+	end
+
+	return true
+
 end
 
 function CollatedHades.AdvanceToNextRun()
 	if not CollatedHades.Initialized then
 		return
 	end
-	local behavior = CollatedHades.config.SelectionBehavior or "Linear"
+	local behavior = CollatedHades.config.SelectionBehavior or CollatedHades.Constants.SelectionBehaviors.LINEAR
 	local eligibleRunFound = false
 	local runsChecked = 0
 	while not eligibleRunFound and runsChecked < CollatedHades.config.NumRuns do
-		-- attempt to get next run
-		if behavior == "Linear" then
-			CollatedHades.CurrentRunIndex = CollatedHades.CurrentRunIndex % CollatedHades.config.NumRuns + 1
-		elseif behavior == "Random" then
-			CollatedHades.CurrentRunIndex = RandomInt(1, CollatedHades.config.NumRuns)
-		end	
-		-- validate run compatibility
-		local runState = CollatedHades.GetCurrentRunState()
-		if runState and not runState.Cleared then
+		-- attempt to get next run and validate run compatibility
+		local selector = CollatedHades.SelectionBehaviors[behavior]
+		local runState = selector()
+
+		if runState and CollatedHades.ValidateRun(runState) then
 			eligibleRunFound = true
 		end
 		runsChecked = runsChecked + 1
@@ -94,15 +106,16 @@ function CollatedHades.StartNextRun()
 	end
 	local nextRun = CollatedHades.GetCurrentRunState()
 	if nextRun.Initialized == true then
-		DebugPrint { Text = "This run is already initialized! runIndex: " .. tostring(CollatedHades.CurrentRunIndex)}
 		return CollatedHades.AdvanceNextRunRoom()
 	end
 
-    CollatedHades.CurrentStatus = CollatedHades.Status.PROCESSING
+    CollatedHades.CurrentStatus = CollatedHades.Constants.Status.PROCESSING
     LoadMap({ Name = "DeathArea", ResetBinks = true, ResetWeaponBinks = true })
-    CollatedHades.CurrentStatus = CollatedHades.Status.IDLE
+	ClearUpgrades()
+    CollatedHades.CurrentStatus = CollatedHades.Constants.Status.IDLE
 	nextRun.Initialized = true
 
+	CollatedHades.RunCallbacks(CollatedHades.Constants.Callbacks.RUN_CREATION, nextRun)
 
 end
 
@@ -110,7 +123,7 @@ function CollatedHades.AdvanceNextRunRoom()
 	if not CollatedHades.Initialized then
 		return
 	end
-	CollatedHades.CurrentStatus = CollatedHades.Status.PROCESSING
+	CollatedHades.CurrentStatus = CollatedHades.Constants.Status.PROCESSING
 	-- advance current run index
 	local nextRun = CollatedHades.GetCurrentRunState()
 	
@@ -120,7 +133,7 @@ function CollatedHades.AdvanceNextRunRoom()
 	-- get new args for the `LoadMap` call
 	local loadMapArgs = nextRun.LoadMapArgs
 	
-    CollatedHades.CurrentStatus = CollatedHades.Status.IDLE
+    CollatedHades.CurrentStatus = CollatedHades.Constants.Status.IDLE
 
 	LoadMap(loadMapArgs)
 end
@@ -157,18 +170,13 @@ function CollatedHades.ProcessLeaveRoom()
 end
 
 function CollatedHades.ValidateCollatedRun()
-	local valid = true
-
-	local atLeastOneUnclearedRun = false
+	-- Collated run will keep going as long as one valid run exists
 	for _, run in ipairs(CollatedHades.RunState) do
-		if not run.Cleared then
-			atLeastOneUnclearedRun = true
-			break
+		if CollatedHades.ValidateRun(run) then
+			return true
 		end
 	end
-	valid = valid and atLeastOneUnclearedRun
-	-- TODO: other validation conditions
-	return valid
+	return false
 end
 
 function CollatedHades.FinishCurrentRun()
@@ -176,31 +184,33 @@ function CollatedHades.FinishCurrentRun()
 	if runState then
 		runState.Cleared = true
 	end
+	
+	CollatedHades.RunCallbacks(CollatedHades.Constants.Callbacks.RUN_COMPLETION)
 end
 
 function CollatedHades.Teardown()
+	CollatedHades.RunCallbacks(CollatedHades.Constants.Callbacks.TEARDOWN)
 	CollatedHades.RunState = {}
 	CollatedHades.Initialized = false
+	
 	LoadMap {
 		Name = "DeathArea",
 		ResetBinks = true,
 		LoadBackgroundColor = true
 	}
+	ClearUpgrades()
 end
 
--- TODO: Depth counter permanence, show weapon too? idk
--- ModUtil.Path.Wrap("HideDepthCounter", function() return false end, CollatedHades)
-
+-- WRAPS
 ModUtil.Path.Wrap("StartNewRun", function (baseFunc, prevRun, args)
 	local run = baseFunc(prevRun, args)
-	CollatedHades.CurrentStatus = CollatedHades.Status.IDLE
-	ForceNextRoom = "D_Boss01"
+	CollatedHades.CurrentStatus = CollatedHades.Constants.Status.IDLE
     return run
 end, CollatedHades)
 
 -- TODO: is this needed?
 ModUtil.Path.Wrap("EndRun", function (baseFunc, currentRun)
-	if CollatedHades.CurrentStatus == CollatedHades.Status.PROCESSING then
+	if CollatedHades.CurrentStatus == CollatedHades.Constants.Status.PROCESSING then
         return
     end
     return baseFunc(currentRun)
