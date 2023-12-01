@@ -1,3 +1,4 @@
+-- TODO: CollatedHades.Data
 function CollatedHades.InitilizeCollatedRun()
     CollatedHades.CurrentRunIndex = 1
 	CollatedHades.RunState[CollatedHades.CurrentRunIndex] = {}
@@ -105,15 +106,16 @@ function CollatedHades.StartNextRun()
 		return
 	end
 	local nextRun = CollatedHades.GetCurrentRunState()
+	-- idk why this is needed. We shouldn't be getting here. But we are. whatever.
 	if nextRun.Initialized == true then
 		return CollatedHades.AdvanceNextRunRoom()
 	end
-
     CollatedHades.CurrentStatus = CollatedHades.Constants.Status.PROCESSING
+	nextRun.Initialized = true
+
     LoadMap({ Name = "DeathArea", ResetBinks = true, ResetWeaponBinks = true })
 	ClearUpgrades()
     CollatedHades.CurrentStatus = CollatedHades.Constants.Status.IDLE
-	nextRun.Initialized = true
 
 	CollatedHades.RunCallbacks(CollatedHades.Constants.Callbacks.RUN_CREATION, nextRun)
 
@@ -193,11 +195,7 @@ function CollatedHades.Teardown()
 	CollatedHades.RunState = {}
 	CollatedHades.Initialized = false
 	
-	LoadMap {
-		Name = "DeathArea",
-		ResetBinks = true,
-		LoadBackgroundColor = true
-	}
+	LoadMap { Name = "DeathArea", ResetBinks = true, LoadBackgroundColor = true }
 	ClearUpgrades()
 end
 
@@ -216,6 +214,7 @@ ModUtil.Path.Wrap("EndRun", function (baseFunc, currentRun)
     return baseFunc(currentRun)
 end, CollatedHades)
 
+-- TODO: Future enhancement -- turn this into a Path.Wrap for more mod compatibility
 ModUtil.Path.Override("LeaveRoom", function (currentRun, door)
 
 	local nextRoom = door.Room
@@ -288,6 +287,8 @@ ModUtil.Path.Override("LeaveRoom", function (currentRun, door)
 	SetPlayerVulnerable( "LeaveRoom" )
 
 	if currentRun.CurrentRoom.SkipLoadNextMap then
+		CollatedHades.FinishCurrentRun()
+		CollatedHades.ProcessLeaveRoom()
 		return
 	end
 
@@ -326,23 +327,14 @@ ModUtil.Path.Override("LeaveRoom", function (currentRun, door)
 
 	RemoveInputBlock({ Name = "MoveHeroToRoomPosition" })
 	AddInputBlock({ Name = "MapLoad" })
-
 	CollatedHades.RunState[CollatedHades.CurrentRunIndex].LoadMapArgs = {
 		Name = nextRoom.Name,
 		ResetBinks = previousRoom.ResetBinksOnExit or currentRun.CurrentRoom and currentRun.CurrentRoom.ResetBinksOnEnter,
 		LoadBackgroundColor = currentRun.CurrentRoom.LoadBackgroundColor
 	}
+
     CollatedHades.ProcessLeaveRoom()
 
-end, CollatedHades)
-
-ModUtil.Path.Wrap("CloseRunClearScreen", function (baseFunc, ...)
-	baseFunc(...)
-	FreezePlayerUnit()
-	wait(3)
-	UnfreezePlayerUnit()
-	CollatedHades.FinishCurrentRun()
-    CollatedHades.ProcessLeaveRoom()
 end, CollatedHades)
 
 ModUtil.Path.Wrap("HandleDeath", function ( baseFunc, ... )
@@ -350,4 +342,17 @@ ModUtil.Path.Wrap("HandleDeath", function ( baseFunc, ... )
 	if not CurrentRun.Cleared then
 		return CollatedHades.Teardown()
 	end
+end, CollatedHades)
+
+-- TODO: Future enhancement -- figure out what to do here for fresh file shenanigans
+ModUtil.Path.Wrap("CheckRunEndPresentation", function (baseFunc, currentRun, door)
+	
+	if TextLinesRecord["Ending01"] ~= nil then
+		currentRun.CurrentRoom.SkipLoadNextMap = true
+		if CollatedHades.ValidateCollatedRun() then
+			return
+		end
+	end
+
+	baseFunc(currentRun, door)
 end, CollatedHades)
