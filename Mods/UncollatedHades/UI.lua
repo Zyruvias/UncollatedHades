@@ -11,7 +11,7 @@ function CloseScreenByName ( name )
 	screen.KeepOpen = false
 	OnScreenClosed({ Flag = screen.Name })
 end
-CollatedHades.BaseComponents = {
+UncollatedHades.BaseComponents = {
 
     Text = {
         Title = {
@@ -143,7 +143,7 @@ function RenderScreenPage(screen, button, index)
     Destroy({Ids = GetScreenIdsToDestroy(screen, button)})
 
     -- then render it
-    CollatedHades.RenderComponents(screen, screen.Pages[index], { Source = button })
+    UncollatedHades.RenderComponents(screen, screen.Pages[index], { Source = button })
 
 end
 
@@ -166,7 +166,7 @@ function ScreenPageLeft(screen, button)
 end
 
 -- Create Menu
-function CollatedHades.CreateMenu(name, args)
+function UncollatedHades.CreateMenu(name, args)
     -- Screen / Hades Framework Setup
     -- DebugPrint { Text = ModUtil.ToString.Deep(args)}
     args = args or {}
@@ -186,23 +186,23 @@ function CollatedHades.CreateMenu(name, args)
 
     -- Initialize Background + Sounds
 	PlaySound({ Name = args.OpenSound or "/SFX/Menu Sounds/DialoguePanelIn" })
-    local background = args.Background or CollatedHades.BaseComponents.Background
+    local background = args.Background or UncollatedHades.BaseComponents.Background
     -- Generalize rendering components on the screen.
-    CollatedHades.RenderBackground(screen, background)
-    CollatedHades.RenderComponents(screen, args.Components)
+    UncollatedHades.RenderBackground(screen, background)
+    UncollatedHades.RenderComponents(screen, args.Components)
     if args.Pages ~= nil then
         screen.Pages = args.Pages
         screen.PageIndex = args.InitialPageIndex or 1
         screen.PageCount = TableLength(args.Pages)
         -- Page Left button
         if (args.PaginationStyle or "Linear") == "Linear" then
-            CollatedHades.RenderButton(screen, {
+            UncollatedHades.RenderButton(screen, {
                 Type = "Button",
                 SubType = "MenuLeft",
                 Args = { FieldName = "MenuLeft" }
             })
             -- Page Right button
-            CollatedHades.RenderButton(screen, {
+            UncollatedHades.RenderButton(screen, {
                 Type = "Button", 
                 SubType = "MenuRight",
                 Args = { FieldName = "MenuRight" }
@@ -212,7 +212,7 @@ function CollatedHades.CreateMenu(name, args)
         screen.PermanentComponents = GetAllIds(screen.Components)
 
         -- Render first Page
-        CollatedHades.RenderComponents(screen, args.Pages[screen.PageIndex])
+        UncollatedHades.RenderComponents(screen, args.Pages[screen.PageIndex])
     end
 
 
@@ -220,7 +220,7 @@ function CollatedHades.CreateMenu(name, args)
     return screen
 end
 
-function CollatedHades.RenderComponents(screen, componentsToRender, args)    
+function UncollatedHades.RenderComponents(screen, componentsToRender, args)    
     -- Handle rendering overrides
     if type(componentsToRender) == "string" then
         if type(_G[componentsToRender]) == "function" then
@@ -232,27 +232,27 @@ function CollatedHades.RenderComponents(screen, componentsToRender, args)
 
     -- default framework rendering
     for _, component in pairs(componentsToRender) do
-        CollatedHades.RenderComponent(screen, component)
+        UncollatedHades.RenderComponent(screen, component)
     end
 end
 
-function CollatedHades.RenderComponent(screen, component)
+function UncollatedHades.RenderComponent(screen, component)
     if component.Type == "Text" then
-        CollatedHades.RenderText(screen, component)
+        UncollatedHades.RenderText(screen, component)
     elseif component.Type == "Button" then
-        CollatedHades.RenderButton(screen, component)
+        UncollatedHades.RenderButton(screen, component)
     elseif component.Type == "Dropdown" then
-        CollatedHades.RenderDropdown(screen, component)
+        UncollatedHades.RenderDropdown(screen, component)
     elseif component.Type == "ProgressBar" then
-        CollatedHades.RenderProgressBar(screen, component)
+        UncollatedHades.RenderProgressBar(screen, component)
     elseif component.Type == "List" then
-        CollatedHades.RenderList(screen, component)
+        UncollatedHades.RenderList(screen, component)
     end
 end
 
-function CollatedHades.RenderDropdown(screen, component)
+function UncollatedHades.RenderDropdown(screen, component)
     local dropdownDefinition = ModUtil.Table.Merge(
-        DeepCopyTable(CollatedHades.BaseComponents.Dropdown[component.SubType]),
+        DeepCopyTable(UncollatedHades.BaseComponents.Dropdown[component.SubType]),
         DeepCopyTable(component.Args)
     )
     dropdownDefinition.Name = dropdownDefinition.FieldName
@@ -260,9 +260,9 @@ function CollatedHades.RenderDropdown(screen, component)
     ErumiUILib.Dropdown.CreateDropdown(screen, dropdownDefinition)
 end
 
-function CollatedHades.RenderButton(screen, component)
+function UncollatedHades.RenderButton(screen, component)
     -- Get Subtype Defaults abnd Merge
-    local defaults = DeepCopyTable(CollatedHades.BaseComponents.Button[component.SubType])
+    local defaults = DeepCopyTable(UncollatedHades.BaseComponents.Button[component.SubType])
     local buttonDefinition = ModUtil.Table.Merge(defaults, component.Args or {})
 
     local components = screen.Components
@@ -309,7 +309,7 @@ function CollatedHades.RenderButton(screen, component)
     if buttonDefinition.Label then
         if type(buttonDefinition.Label) == "table" then
             buttonDefinition.Label.Parent = buttonName
-            CollatedHades.RenderText(screen, buttonDefinition.Label)
+            UncollatedHades.RenderText(screen, buttonDefinition.Label)
         else
             DebugPrint { Text = "Button.Label definition not properly defined!"}
         end
@@ -319,10 +319,10 @@ function CollatedHades.RenderButton(screen, component)
 end
 
 -- Create Text Box
-function CollatedHades.RenderText(screen, component)
+function UncollatedHades.RenderText(screen, component)
     -- Get Subtype Defaults abnd Merge
     local textDefinition = ModUtil.Table.Merge(
-        DeepCopyTable(CollatedHades.BaseComponents.Text[component.SubType]),
+        DeepCopyTable(UncollatedHades.BaseComponents.Text[component.SubType]),
         DeepCopyTable(component.Args)
     )
     -- Create Text
@@ -341,10 +341,10 @@ function CollatedHades.RenderText(screen, component)
 
 end
 
-function CollatedHades.UpdateText(screen, component)
+function UncollatedHades.UpdateText(screen, component)
     -- Get Subtype Defaults abnd Merge
     local textDefinition = ModUtil.Table.Merge(
-        DeepCopyTable(CollatedHades.BaseComponents.Text[component.SubType]),
+        DeepCopyTable(UncollatedHades.BaseComponents.Text[component.SubType]),
         DeepCopyTable(component.Args)
     )
     local components = screen.Components
@@ -354,7 +354,7 @@ function CollatedHades.UpdateText(screen, component)
 
 end
 
-function CollatedHades.RenderBackground(screen, component)
+function UncollatedHades.RenderBackground(screen, component)
     screen.Components.Background = CreateScreenComponent({ Name = component.Name, X = component.X, Y = component.Y })
     if component.Scale ~= nil then
         SetScale({ Id = screen.Components.Background.Id, Fraction = component.Scale })
@@ -377,7 +377,7 @@ end
 -- MENUS
 
 ModUtil.Path.Wrap("UseShrineObject", function (baseFunc, ...)
-    if CollatedHades.Initialized == true or not CollatedHades.config.Enabled then
+    if UncollatedHades.Initialized == true or not UncollatedHades.config.Enabled then
         return baseFunc(...)
     end
 
@@ -387,15 +387,15 @@ ModUtil.Path.Wrap("UseShrineObject", function (baseFunc, ...)
             event = function() end
         }
     }
-    for name, behavior in pairs(CollatedHades.SelectionBehaviors) do
+    for name, behavior in pairs(UncollatedHades.SelectionBehaviors) do
         table.insert(selectionBehaviorDropdownItems, {
             Text = name,
             event = function ()
-                CollatedHades.config.SelectionBehavior = name
+                UncollatedHades.config.SelectionBehavior = name
             end
         })
     end
-    CollatedHades.CreateMenu("CollatedHades", {
+    UncollatedHades.CreateMenu("UncollatedHades", {
         Components = {
             {
                 Type = "Button",
@@ -423,7 +423,7 @@ ModUtil.Path.Wrap("UseShrineObject", function (baseFunc, ...)
                 Type = "Text",
                 SubType = "Title",
                 Args = {
-                    FieldName = "CollatedHadesTitle",
+                    FieldName = "UncollatedHadesTitle",
                     Text = "Anti-Collation Mod Setup",
                 }
             },
@@ -431,7 +431,7 @@ ModUtil.Path.Wrap("UseShrineObject", function (baseFunc, ...)
                 Type = "Text",
                 SubType = "Subtitle",
                 Args = {
-                    FieldName = "CollatedHadesSubtitle",
+                    FieldName = "UncollatedHadesSubtitle",
                     Text = "Select your desired mod behavior below, then click \"Go!\" below.",
                 }
             },
@@ -465,18 +465,18 @@ ModUtil.Path.Wrap("UseShrineObject", function (baseFunc, ...)
                             Text = "Number of Runs",
                             event = function() end
                         },
-                        { Text = "2", event = function () CollatedHades.config.NumRuns = 2 end },
-                        { Text = "3", event = function () CollatedHades.config.NumRuns = 3 end },
-                        { Text = "4", event = function () CollatedHades.config.NumRuns = 4 end },
-                        { Text = "5", event = function () CollatedHades.config.NumRuns = 5 end },
-                        { Text = "6", event = function () CollatedHades.config.NumRuns = 6 end },
-                        { Text = "7", event = function () CollatedHades.config.NumRuns = 7 end },
-                        { Text = "8", event = function () CollatedHades.config.NumRuns = 8 end },
-                        { Text = "9", event = function () CollatedHades.config.NumRuns = 9 end },
-                        { Text = "10", event = function () CollatedHades.config.NumRuns = 10 end },
-                        { Text = "11", event = function () CollatedHades.config.NumRuns = 11 end },
-                        { Text = "12", event = function () CollatedHades.config.NumRuns = 12 end },
-                        { Text = "24", event = function () CollatedHades.config.NumRuns = 24 end },
+                        { Text = "2", event = function () UncollatedHades.config.NumRuns = 2 end },
+                        { Text = "3", event = function () UncollatedHades.config.NumRuns = 3 end },
+                        { Text = "4", event = function () UncollatedHades.config.NumRuns = 4 end },
+                        { Text = "5", event = function () UncollatedHades.config.NumRuns = 5 end },
+                        { Text = "6", event = function () UncollatedHades.config.NumRuns = 6 end },
+                        { Text = "7", event = function () UncollatedHades.config.NumRuns = 7 end },
+                        { Text = "8", event = function () UncollatedHades.config.NumRuns = 8 end },
+                        { Text = "9", event = function () UncollatedHades.config.NumRuns = 9 end },
+                        { Text = "10", event = function () UncollatedHades.config.NumRuns = 10 end },
+                        { Text = "11", event = function () UncollatedHades.config.NumRuns = 11 end },
+                        { Text = "12", event = function () UncollatedHades.config.NumRuns = 12 end },
+                        { Text = "24", event = function () UncollatedHades.config.NumRuns = 24 end },
                     }
                 }
             },
@@ -509,21 +509,21 @@ ModUtil.Path.Wrap("UseShrineObject", function (baseFunc, ...)
             }
         }
     })
-    CollatedHades.InitilizeCollatedRun()
+    UncollatedHades.InitilizeCollatedRun()
     baseFunc(...)
 
-end, CollatedHades)
+end, UncollatedHades)
 
 -- ShowChamberNumber mod for brevity
 ModUtil.Path.Wrap("StartRoom", function ( baseFunc, currentRun, currentRoom )
-    if CollatedHades.config.Enabled then
+    if UncollatedHades.config.Enabled then
         ShowDepthCounter()
     end
 
     baseFunc(currentRun, currentRoom)
 end, ShowChamberNumber)
 ModUtil.Path.Wrap("ShowCombatUI", function ( baseFunc, flag )
-    if CollatedHades.config.Enabled then
+    if UncollatedHades.config.Enabled then
         ShowDepthCounter()
     end
 
@@ -531,7 +531,7 @@ ModUtil.Path.Wrap("ShowCombatUI", function ( baseFunc, flag )
 end, ShowChamberNumber)
 
 ModUtil.Path.Wrap("HideDepthCounter", function ( baseFunc )
-    if CollatedHades.config.Enabled then
+    if UncollatedHades.config.Enabled then
         return
     end
 
@@ -540,10 +540,10 @@ end, ShowChamberNumber)
 
 ModUtil.Path.Wrap("ShowDepthCounter", function ( baseFunc )
     baseFunc()
-    if CollatedHades.config.Enabled then
+    if UncollatedHades.config.Enabled then
 	    ModifyTextBox({
             Id = ScreenAnchors.RunDepthId,
-            Text = "Chamber " .. tostring(CurrentRun.RunDepthCache) .. ", Run " .. tostring(CollatedHades.CurrentRunIndex)
+            Text = "Chamber " .. tostring(CurrentRun.RunDepthCache) .. ", Run " .. tostring(UncollatedHades.CurrentRunIndex)
         })
     end
 

@@ -1,26 +1,26 @@
--- TODO: CollatedHades.Data
-function CollatedHades.InitilizeCollatedRun()
-    CollatedHades.CurrentRunIndex = 1
-	CollatedHades.RunState[CollatedHades.CurrentRunIndex] = {}
+-- TODO: UncollatedHades.Data
+function UncollatedHades.InitilizeCollatedRun()
+    UncollatedHades.CurrentRunIndex = 1
+	UncollatedHades.RunState[UncollatedHades.CurrentRunIndex] = {}
 	
 	-- set run state for each run expected to run
-	for i = 1, CollatedHades.config.NumRuns, 1 do
-		CollatedHades.RunState[i] = {
+	for i = 1, UncollatedHades.config.NumRuns, 1 do
+		UncollatedHades.RunState[i] = {
 			Initialized = false,
 		}
 	end
 	
-	CollatedHades.Initialized = true
-	CollatedHades.RunCallbacks(CollatedHades.Constants.Callbacks.SETUP)
+	UncollatedHades.Initialized = true
+	UncollatedHades.RunCallbacks(UncollatedHades.Constants.Callbacks.SETUP)
 end
 
-function CollatedHades.SaveRun()
-	if not CollatedHades.Initialized then
+function UncollatedHades.SaveRun()
+	if not UncollatedHades.Initialized then
 		return
 	end
-	local run = CollatedHades.GetCurrentRunState()
+	local run = UncollatedHades.GetCurrentRunState()
 	
-	CollatedHades.RunCallbacks(CollatedHades.Constants.Callbacks.PRE_SAVE, run)
+	UncollatedHades.RunCallbacks(UncollatedHades.Constants.Callbacks.PRE_SAVE, run)
 
     run.CurrentRun = DeepCopyTable(CurrentRun)
 	run.MetaUpgrades = DeepCopyTable(GameState.MetaUpgrades)
@@ -33,16 +33,16 @@ function CollatedHades.SaveRun()
 	run.Initialized = true
 
 	
-	CollatedHades.RunCallbacks(CollatedHades.Constants.Callbacks.POST_SAVE)
+	UncollatedHades.RunCallbacks(UncollatedHades.Constants.Callbacks.POST_SAVE)
 end
 
-function CollatedHades.LoadRun()
-	if not CollatedHades.Initialized then
+function UncollatedHades.LoadRun()
+	if not UncollatedHades.Initialized then
 		return
 	end
-	local run = CollatedHades.GetCurrentRunState()
+	local run = UncollatedHades.GetCurrentRunState()
 	
-	CollatedHades.RunCallbacks(CollatedHades.Constants.Callbacks.PRE_LOAD, run)
+	UncollatedHades.RunCallbacks(UncollatedHades.Constants.Callbacks.PRE_LOAD, run)
 	
 	-- TODO: what else is set in GameState?
 	CurrentRun = run.CurrentRun
@@ -52,18 +52,18 @@ function CollatedHades.LoadRun()
 	GameState.LastAwardTrait = run.LastAwardTrait
 	GameState.LastAssistTrait = run.LastAssistTrait
 
-	CollatedHades.RunCallbacks(CollatedHades.Constants.Callbacks.POST_LOAD, run)
+	UncollatedHades.RunCallbacks(UncollatedHades.Constants.Callbacks.POST_LOAD, run)
 	
 end
 
-function CollatedHades.ValidateRun(run)
-	for _, validator in ipairs(CollatedHades.Validators) do
+function UncollatedHades.ValidateRun(run)
+	for _, validator in ipairs(UncollatedHades.Validators) do
 		if type(validator) == "function" then
 			if not validator(run) then
 				return false
 			end
 		else
-			DebugPrint { Text = "CollatedHades: found improperly formatted validator: " .. ModUtil.ToString.Shallow(validator) }
+			DebugPrint { Text = "UncollatedHades: found improperly formatted validator: " .. ModUtil.ToString.Shallow(validator) }
 		end
 	end
 
@@ -71,129 +71,129 @@ function CollatedHades.ValidateRun(run)
 
 end
 
-function CollatedHades.AdvanceToNextRun()
-	if not CollatedHades.Initialized then
+function UncollatedHades.AdvanceToNextRun()
+	if not UncollatedHades.Initialized then
 		return
 	end
-	local behavior = CollatedHades.config.SelectionBehavior or CollatedHades.Constants.SelectionBehaviors.LINEAR
+	local behavior = UncollatedHades.config.SelectionBehavior or UncollatedHades.Constants.SelectionBehaviors.LINEAR
 	local eligibleRunFound = false
 	local runsChecked = 0
-	while not eligibleRunFound and runsChecked < CollatedHades.config.NumRuns do
+	while not eligibleRunFound and runsChecked < UncollatedHades.config.NumRuns do
 		-- attempt to get next run and validate run compatibility
-		local selector = CollatedHades.SelectionBehaviors[behavior]
+		local selector = UncollatedHades.SelectionBehaviors[behavior]
 		local runState = selector()
 
-		if runState and CollatedHades.ValidateRun(runState) then
+		if runState and UncollatedHades.ValidateRun(runState) then
 			eligibleRunFound = true
 		end
 		runsChecked = runsChecked + 1
 	end
 
-	if runsChecked == CollatedHades.config.NumRuns and not eligibleRunFound then
+	if runsChecked == UncollatedHades.config.NumRuns and not eligibleRunFound then
 		DebugPrint { Text = "All runs checked, no eligible runs found. Tearing down."}
-		return CollatedHades.Teardown()
+		return UncollatedHades.Teardown()
 	end
 
 end
 
-function CollatedHades.GetCurrentRunState()
-	return CollatedHades.RunState[CollatedHades.CurrentRunIndex]
+function UncollatedHades.GetCurrentRunState()
+	return UncollatedHades.RunState[UncollatedHades.CurrentRunIndex]
 end
  
 -- spawns you in the death area to configure your next run
-function CollatedHades.StartNextRun()
-	if not CollatedHades.Initialized then
+function UncollatedHades.StartNextRun()
+	if not UncollatedHades.Initialized then
 		return
 	end
-	local nextRun = CollatedHades.GetCurrentRunState()
+	local nextRun = UncollatedHades.GetCurrentRunState()
 	-- idk why this is needed. We shouldn't be getting here. But we are. whatever.
 	if nextRun.Initialized == true then
-		return CollatedHades.AdvanceNextRunRoom()
+		return UncollatedHades.AdvanceNextRunRoom()
 	end
-    CollatedHades.CurrentStatus = CollatedHades.Constants.Status.PROCESSING
+    UncollatedHades.CurrentStatus = UncollatedHades.Constants.Status.PROCESSING
 	nextRun.Initialized = true
 
     LoadMap({ Name = "DeathArea", ResetBinks = true, ResetWeaponBinks = true })
 	ClearUpgrades()
-    CollatedHades.CurrentStatus = CollatedHades.Constants.Status.IDLE
+    UncollatedHades.CurrentStatus = UncollatedHades.Constants.Status.IDLE
 
-	CollatedHades.RunCallbacks(CollatedHades.Constants.Callbacks.RUN_CREATION, nextRun)
+	UncollatedHades.RunCallbacks(UncollatedHades.Constants.Callbacks.RUN_CREATION, nextRun)
 
 end
 
-function CollatedHades.AdvanceNextRunRoom()
-	if not CollatedHades.Initialized then
+function UncollatedHades.AdvanceNextRunRoom()
+	if not UncollatedHades.Initialized then
 		return
 	end
-	CollatedHades.CurrentStatus = CollatedHades.Constants.Status.PROCESSING
+	UncollatedHades.CurrentStatus = UncollatedHades.Constants.Status.PROCESSING
 	-- advance current run index
-	local nextRun = CollatedHades.GetCurrentRunState()
+	local nextRun = UncollatedHades.GetCurrentRunState()
 	
 	-- fetch new run state
-	CollatedHades.LoadRun()
+	UncollatedHades.LoadRun()
 
 	-- get new args for the `LoadMap` call
 	local loadMapArgs = nextRun.LoadMapArgs
 	
-    CollatedHades.CurrentStatus = CollatedHades.Constants.Status.IDLE
+    UncollatedHades.CurrentStatus = UncollatedHades.Constants.Status.IDLE
 
 	LoadMap(loadMapArgs)
 end
 
-function CollatedHades.ProcessRunState()
-	if not CollatedHades.Initialized then
+function UncollatedHades.ProcessRunState()
+	if not UncollatedHades.Initialized then
 		return
 	end
-	local runState = CollatedHades.GetCurrentRunState()
+	local runState = UncollatedHades.GetCurrentRunState()
 	-- determine if we should create new runs or advance the next room of next run
 	if not runState.Initialized then
-        return CollatedHades.StartNextRun()
+        return UncollatedHades.StartNextRun()
 	end
-	return CollatedHades.AdvanceNextRunRoom()
+	return UncollatedHades.AdvanceNextRunRoom()
 end
 
-function CollatedHades.ProcessLeaveRoom()
-	if not CollatedHades.Initialized then
+function UncollatedHades.ProcessLeaveRoom()
+	if not UncollatedHades.Initialized then
 		-- need to still leave the room, just not do all the collation stuff...
-		LoadMap(CollatedHades.RunState[CollatedHades.CurrentRunIndex].LoadMapArgs)
+		LoadMap(UncollatedHades.RunState[UncollatedHades.CurrentRunIndex].LoadMapArgs)
 		return 
 	end
 	-- on room leave, save the run
-	CollatedHades.SaveRun()
+	UncollatedHades.SaveRun()
 	-- Check on overall collated run state
-	if not CollatedHades.ValidateCollatedRun() then
+	if not UncollatedHades.ValidateCollatedRun() then
 		-- end the run?
-		return CollatedHades.Teardown()
+		return UncollatedHades.Teardown()
 	end
 	-- select next run
-	CollatedHades.AdvanceToNextRun()
+	UncollatedHades.AdvanceToNextRun()
 	-- process it
-	CollatedHades.ProcessRunState()
+	UncollatedHades.ProcessRunState()
 end
 
-function CollatedHades.ValidateCollatedRun()
+function UncollatedHades.ValidateCollatedRun()
 	-- Collated run will keep going as long as one valid run exists
-	for _, run in ipairs(CollatedHades.RunState) do
-		if CollatedHades.ValidateRun(run) then
+	for _, run in ipairs(UncollatedHades.RunState) do
+		if UncollatedHades.ValidateRun(run) then
 			return true
 		end
 	end
 	return false
 end
 
-function CollatedHades.FinishCurrentRun()
-	local runState = CollatedHades.GetCurrentRunState()
+function UncollatedHades.FinishCurrentRun()
+	local runState = UncollatedHades.GetCurrentRunState()
 	if runState then
 		runState.Cleared = true
 	end
 	
-	CollatedHades.RunCallbacks(CollatedHades.Constants.Callbacks.RUN_COMPLETION)
+	UncollatedHades.RunCallbacks(UncollatedHades.Constants.Callbacks.RUN_COMPLETION)
 end
 
-function CollatedHades.Teardown()
-	CollatedHades.RunCallbacks(CollatedHades.Constants.Callbacks.TEARDOWN)
-	CollatedHades.RunState = {}
-	CollatedHades.Initialized = false
+function UncollatedHades.Teardown()
+	UncollatedHades.RunCallbacks(UncollatedHades.Constants.Callbacks.TEARDOWN)
+	UncollatedHades.RunState = {}
+	UncollatedHades.Initialized = false
 	
 	LoadMap { Name = "DeathArea", ResetBinks = true, LoadBackgroundColor = true }
 	ClearUpgrades()
@@ -202,17 +202,18 @@ end
 -- WRAPS
 ModUtil.Path.Wrap("StartNewRun", function (baseFunc, prevRun, args)
 	local run = baseFunc(prevRun, args)
-	CollatedHades.CurrentStatus = CollatedHades.Constants.Status.IDLE
+	EnemyData.Hades.MaxHealth = 10
+	UncollatedHades.CurrentStatus = UncollatedHades.Constants.Status.IDLE
     return run
-end, CollatedHades)
+end, UncollatedHades)
 
 -- TODO: is this needed?
 ModUtil.Path.Wrap("EndRun", function (baseFunc, currentRun)
-	if CollatedHades.CurrentStatus == CollatedHades.Constants.Status.PROCESSING then
+	if UncollatedHades.CurrentStatus == UncollatedHades.Constants.Status.PROCESSING then
         return
     end
     return baseFunc(currentRun)
-end, CollatedHades)
+end, UncollatedHades)
 
 -- TODO: Future enhancement -- turn this into a Path.Wrap for more mod compatibility
 ModUtil.Path.Override("LeaveRoom", function (currentRun, door)
@@ -287,8 +288,8 @@ ModUtil.Path.Override("LeaveRoom", function (currentRun, door)
 	SetPlayerVulnerable( "LeaveRoom" )
 
 	if currentRun.CurrentRoom.SkipLoadNextMap then
-		CollatedHades.FinishCurrentRun()
-		CollatedHades.ProcessLeaveRoom()
+		UncollatedHades.FinishCurrentRun()
+		UncollatedHades.ProcessLeaveRoom()
 		return
 	end
 
@@ -327,32 +328,32 @@ ModUtil.Path.Override("LeaveRoom", function (currentRun, door)
 
 	RemoveInputBlock({ Name = "MoveHeroToRoomPosition" })
 	AddInputBlock({ Name = "MapLoad" })
-	CollatedHades.RunState[CollatedHades.CurrentRunIndex].LoadMapArgs = {
+	UncollatedHades.RunState[UncollatedHades.CurrentRunIndex].LoadMapArgs = {
 		Name = nextRoom.Name,
 		ResetBinks = previousRoom.ResetBinksOnExit or currentRun.CurrentRoom and currentRun.CurrentRoom.ResetBinksOnEnter,
 		LoadBackgroundColor = currentRun.CurrentRoom.LoadBackgroundColor
 	}
 
-    CollatedHades.ProcessLeaveRoom()
+    UncollatedHades.ProcessLeaveRoom()
 
-end, CollatedHades)
+end, UncollatedHades)
 
 ModUtil.Path.Wrap("HandleDeath", function ( baseFunc, ... )
 	baseFunc(...)
 	if not CurrentRun.Cleared then
-		return CollatedHades.Teardown()
+		return UncollatedHades.Teardown()
 	end
-end, CollatedHades)
+end, UncollatedHades)
 
 -- TODO: Future enhancement -- figure out what to do here for fresh file shenanigans
 ModUtil.Path.Wrap("CheckRunEndPresentation", function (baseFunc, currentRun, door)
 	
 	if TextLinesRecord["Ending01"] ~= nil then
 		currentRun.CurrentRoom.SkipLoadNextMap = true
-		if CollatedHades.ValidateCollatedRun() then
+		if UncollatedHades.ValidateCollatedRun() then
 			return
 		end
 	end
 
 	baseFunc(currentRun, door)
-end, CollatedHades)
+end, UncollatedHades)
