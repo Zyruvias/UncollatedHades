@@ -1,17 +1,26 @@
 -- TODO: UncollatedHades.Data
 function UncollatedHades.InitilizeCollatedRun()
-    UncollatedHades.CurrentRunIndex = 1
-	UncollatedHades.RunState[UncollatedHades.CurrentRunIndex] = {}
-	
 	-- set run state for each run expected to run
 	for i = 1, UncollatedHades.config.NumRuns, 1 do
 		UncollatedHades.RunState[i] = {
 			Initialized = false,
+			Index = i,
 		}
 	end
-	
+
+	UncollatedHades.CurrentRunIndex = 1
 	UncollatedHades.Initialized = true
 	UncollatedHades.RunCallbacks(UncollatedHades.Constants.Callbacks.SETUP)
+end
+
+function UncollatedHades.GetAllValidRuns()
+	local runsToReturn = {}
+	for i, run in ipairs(UncollatedHades.RunState) do
+		if ValidateRun(run) then
+			table.insert(runsToReturn, run)
+		end
+	end
+	return runsToReturn
 end
 
 function UncollatedHades.SaveRun()
@@ -76,24 +85,16 @@ function UncollatedHades.AdvanceToNextRun()
 		return
 	end
 	local behavior = UncollatedHades.config.SelectionBehavior or UncollatedHades.Constants.SelectionBehaviors.LINEAR
-	local eligibleRunFound = false
-	local runsChecked = 0
-	while not eligibleRunFound and runsChecked < UncollatedHades.config.NumRuns do
-		-- attempt to get next run and validate run compatibility
-		local selector = UncollatedHades.SelectionBehaviors[behavior]
-		local runState = selector()
+	local selector = UncollatedHades.SelectionBehaviors[behavior]
 
-		if runState and UncollatedHades.ValidateRun(runState) then
-			eligibleRunFound = true
-		end
-		runsChecked = runsChecked + 1
-	end
+	local runState = selector()
 
-	if runsChecked == UncollatedHades.config.NumRuns and not eligibleRunFound then
-		DebugPrint { Text = "All runs checked, no eligible runs found. Tearing down."}
+	if not runState or not UncollatedHades.ValidateRun(runstate) then
+		DebugPrint { Text = "UncollatedHades: Selection behavior " .. tostring(behavior) .. " did not return a valid run, tearing down."}
 		return UncollatedHades.Teardown()
 	end
 
+	Uncollated.CurrentRunIndex = runState.Index
 end
 
 function UncollatedHades.GetCurrentRunState()
@@ -155,7 +156,7 @@ end
 function UncollatedHades.ProcessLeaveRoom()
 	if not UncollatedHades.Initialized then
 		-- need to still leave the room, just not do all the collation stuff...
-		LoadMap(UncollatedHades.RunState[UncollatedHades.CurrentRunIndex].LoadMapArgs)
+		LoadMap(UncollatedHades.GetCurrentRunState().LoadMapArgs)
 		return 
 	end
 	-- on room leave, save the run
@@ -202,7 +203,8 @@ end
 -- WRAPS
 ModUtil.Path.Wrap("StartNewRun", function (baseFunc, prevRun, args)
 	local run = baseFunc(prevRun, args)
-	EnemyData.Hades.MaxHealth = 10
+	UncollatedHades.CurrentStatus = UncollatedHades.Constants.Status.PROCESSING
+    UncollatedHades.InitilizeCollatedRun()
 	UncollatedHades.CurrentStatus = UncollatedHades.Constants.Status.IDLE
     return run
 end, UncollatedHades)
@@ -328,7 +330,8 @@ ModUtil.Path.Override("LeaveRoom", function (currentRun, door)
 
 	RemoveInputBlock({ Name = "MoveHeroToRoomPosition" })
 	AddInputBlock({ Name = "MapLoad" })
-	UncollatedHades.RunState[UncollatedHades.CurrentRunIndex].LoadMapArgs = {
+	local runState = UncollatedHades.GetCurrentRunState()
+	runState.LoadMapArgs = {
 		Name = nextRoom.Name,
 		ResetBinks = previousRoom.ResetBinksOnExit or currentRun.CurrentRoom and currentRun.CurrentRoom.ResetBinksOnEnter,
 		LoadBackgroundColor = currentRun.CurrentRoom.LoadBackgroundColor
@@ -340,9 +343,8 @@ end, UncollatedHades)
 
 ModUtil.Path.Wrap("HandleDeath", function ( baseFunc, ... )
 	baseFunc(...)
-	if not CurrentRun.Cleared then
-		return UncollatedHades.Teardown()
-	end
+	local behavior = UncollatedHades.SelectionBehaviors[UncollatedHades.config.DeathBehavior or UncollatedHades.Constants.DeathBehaviors.SLICE]
+	return behavior()
 end, UncollatedHades)
 
 -- TODO: Future enhancement -- figure out what to do here for fresh file shenanigans

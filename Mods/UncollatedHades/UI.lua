@@ -395,6 +395,21 @@ ModUtil.Path.Wrap("UseShrineObject", function (baseFunc, ...)
             end
         })
     end
+
+    local deathBehaviorDropdownOptions = {
+        Default = {
+            Text = "On Death Behavior",
+            event = function() end
+        }
+    }
+    for name, behavior in pairs(UncollatedHades.DeathBehaviors) do
+        table.insert(selectionBehaviorDropdownItems, {
+            Text = name,
+            event = function ()
+                UncollatedHades.config.DeathBehavior = name
+            end
+        })
+    end
     UncollatedHades.CreateMenu("UncollatedHades", {
         Components = {
             {
@@ -506,10 +521,36 @@ ModUtil.Path.Wrap("UseShrineObject", function (baseFunc, ...)
                     GeneralFontSize = 12,
                     Items = selectionBehaviorDropdownItems,
                 }
+            },
+            {
+                Type = "Text",
+                SubType = "Subtitle",
+                Args = {
+                    FieldName = "DeathBehaviorSubtitle",
+                    Font = "AlegreyaSansSCRegular",
+                    Text = "On death behavior:",
+                    FontSize = 18,
+                    OffsetX = ScreenWidth / 6,
+                    OffsetY = - ScreenHeight / 6 - 50,
+                }
+            },
+            {
+                Type = "Dropdown",
+                SubType = "Standard",
+                Args = {
+                    FieldName = "DeathBehaviorDropdown",
+                    Group = "DeathBehaviorDropdownGroup",
+                    -- X, Y, Items, Name
+                    X = 3 * ScreenWidth / 6,
+                    Y = ScreenHeight / 3,
+                    Scale = {X = .30, Y = .35},
+                    Padding = {X = 0, Y = 2},
+                    GeneralFontSize = 12,
+                    Items = deathBehaviorDropdownOptions,
+                }
             }
         }
     })
-    UncollatedHades.InitilizeCollatedRun()
     baseFunc(...)
 
 end, UncollatedHades)

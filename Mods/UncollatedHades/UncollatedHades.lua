@@ -11,13 +11,11 @@ local config = {
     Enabled = true,
     NumRuns = 2,
     SelectionBehavior = "Linear",
+    DeathBehavior = "Run-by-run",
 }
 UncollatedHades.config = config
 UncollatedHades.Initialized = false
-
-UncollatedHades.RunState = {
-    
-}
+UncollatedHades.RunState = {}
 
 -- Constants
 UncollatedHades.Constants = {
@@ -38,6 +36,10 @@ UncollatedHades.Constants = {
     SelectionBehaviors = {
         LINEAR = "Linear",
         RANDOM = "Random",
+    },
+    DeathBehaviors = {
+        COMPREHENSIVE = "Comprehensive",
+        SLICE = "Run-by-run",
     }
 }
 
@@ -75,22 +77,56 @@ function UncollatedHades.RegisterSelectionBehavior(name, behavior)
     UncollatedHades.SelectionBehaviors[name] = behavior
 end
 
+UncollatedHades.DeathBehaviors = {}
+function UncollatedHades.RegisterDeathBehavior(name, behavior)
+    UncollatedHades.DeathBehaviors[name] = behavior
+end
+
 -- Example registrations / default behaviors
 UncollatedHades.RegisterSelectionBehavior(
     UncollatedHades.Constants.SelectionBehaviors.LINEAR,
-    function ()
-        UncollatedHades.CurrentRunIndex = UncollatedHades.CurrentRunIndex % UncollatedHades.config.NumRuns + 1
-        return UncollatedHades.GetCurrentRunState()
+    -- linearly check through all runs, return next in list that is valid
+    function () 
+        local eligibleRunFound = false
+        local runsChecked = 0
+        while not eligibleRunFound and runsChecked < UncollatedHades.config.NumRuns do
+            
+            UncollatedHades.CurrentRunIndex = UncollatedHades.CurrentRunIndex % UncollatedHades.config.NumRuns + 1
+            local runState = UncollatedHades.GetCurrentRunState()
+            if UncollatedHades.ValidateRun(runState) then
+                return runState
+            end
+            runsChecked = runsChecked + 1
+
+        end
+        return nil
     end
 )
 
 UncollatedHades.RegisterSelectionBehavior(
     UncollatedHades.Constants.SelectionBehaviors.RANDOM,
     function ()
-        UncollatedHades.CurrentRunIndex = RandomInt(1, UncollatedHades.config.NumRuns)
-        return UncollatedHades.GetCurrentRunState()
+        return GetRandomValue(UncollatedHades.GetAllValidRuns())
     end
 )
 
 -- runs that already cleared dad are not eligible for future selection
 UncollatedHades.RegisterRunValidator(function (run) return not run.Cleared end)
+
+-- Add slice behhavior -- death ends one series of runs
+UncollatedHades.RegisterDeathBehaviors(
+    UncollatedHades.Constants.DeathBehaviors.SLICE,
+    function()
+        -- hack to make the default validator think the run is invalid
+        UncollatedHades.GetCurrentRunState().Cleared = true
+    end
+)
+-- Add comprehensive behhavior -- death ends the ENTIRE series of runs
+UncollatedHades.RegisterDeathBehaviors(
+    UncollatedHades.Constants.DeathBehaviors.COMPREHENSIVE,
+    function()
+        if not CurrentRun.Cleared then
+            return UncollatedHades.Teardown()
+        end
+    end
+)
