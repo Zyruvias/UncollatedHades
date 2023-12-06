@@ -202,7 +202,6 @@ end
 -- WRAPS
 ModUtil.Path.Wrap("StartNewRun", function (baseFunc, prevRun, args)
 	local run = baseFunc(prevRun, args)
-	EnemyData.Hades.MaxHealth = 10
 	UncollatedHades.CurrentStatus = UncollatedHades.Constants.Status.IDLE
     return run
 end, UncollatedHades)
